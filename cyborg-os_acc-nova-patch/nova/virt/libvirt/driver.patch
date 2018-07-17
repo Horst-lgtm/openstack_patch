@@ -1,0 +1,77 @@
+diff --git a/nova/virt/libvirt/driver.py b/nova/virt/libvirt/driver.py
+index 539bce7..957961d 100644
+--- a/nova/virt/libvirt/driver.py
++++ b/nova/virt/libvirt/driver.py
+@@ -35,6 +35,7 @@ import glob
+ import itertools
+ import operator
+ import os
++import os_acc as libvirt_acc
+ import pwd
+ import random
+ import shutil
+@@ -333,6 +334,7 @@ class LibvirtDriver(driver.ComputeDriver):
+             host=self._host)
+ 
+         self.vif_driver = libvirt_vif.LibvirtGenericVIFDriver()
++        libvirt_acc.initialize()
+ 
+         # TODO(mriedem): Long-term we should load up the volume drivers on
+         # demand as needed rather than doing this on startup, as there might
+@@ -3045,7 +3047,7 @@ class LibvirtDriver(driver.ComputeDriver):
+ 
+     def spawn(self, context, instance, image_meta, injected_files,
+               admin_password, allocations, network_info=None,
+-              block_device_info=None):
++              block_device_info=None, accelerator_info=None):
+         disk_info = blockinfo.get_disk_info(CONF.libvirt.virt_type,
+                                             instance,
+                                             image_meta,
+@@ -3069,7 +3071,8 @@ class LibvirtDriver(driver.ComputeDriver):
+         xml = self._get_guest_xml(context, instance, network_info,
+                                   disk_info, image_meta,
+                                   block_device_info=block_device_info,
+-                                  mdevs=mdevs)
++                                  mdevs=mdevs,
++                                  accelerator_info=accelerator_info)
+         self._create_domain_and_network(
+             context, xml, instance, network_info,
+             block_device_info=block_device_info,
+@@ -5132,7 +5135,7 @@ class LibvirtDriver(driver.ComputeDriver):
+ 
+     def _get_guest_config(self, instance, network_info, image_meta,
+                           disk_info, rescue=None, block_device_info=None,
+-                          context=None, mdevs=None):
++                          context=None, mdevs=None, accelerator_info=None):
+         """Get config data for parameters.
+ 
+         :param rescue: optional dictionary that should contain the key
+@@ -5220,6 +5223,10 @@ class LibvirtDriver(driver.ComputeDriver):
+                 flavor, virt_type, self._host)
+             guest.add_device(config)
+ 
++        for acc in accelerator_info:
++            config = libvirt_acc.get_config(instance, flavor, acc)
++            guest.add_device(config)
++
+         self._create_consoles(virt_type, guest, instance, flavor, image_meta)
+ 
+         pointer = self._get_guest_pointer_model(guest.os_type, image_meta)
+@@ -5406,7 +5413,7 @@ class LibvirtDriver(driver.ComputeDriver):
+     def _get_guest_xml(self, context, instance, network_info, disk_info,
+                        image_meta, rescue=None,
+                        block_device_info=None,
+-                       mdevs=None):
++                       mdevs=None, accelerator_info=None):
+         # NOTE(danms): Stringifying a NetworkInfo will take a lock. Do
+         # this ahead of time so that we don't acquire it while also
+         # holding the logging lock.
+@@ -5424,7 +5431,7 @@ class LibvirtDriver(driver.ComputeDriver):
+         LOG.debug(strutils.mask_password(msg), instance=instance)
+         conf = self._get_guest_config(instance, network_info, image_meta,
+                                       disk_info, rescue, block_device_info,
+-                                      context, mdevs)
++                                      context, mdevs, accelerator_info)
+         xml = conf.to_xml()
+ 
+         LOG.debug('End _get_guest_xml xml=%(xml)s',

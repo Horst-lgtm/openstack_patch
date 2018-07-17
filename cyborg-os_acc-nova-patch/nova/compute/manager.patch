@@ -1,0 +1,25 @@
+diff --git a/nova/compute/manager.py b/nova/compute/manager.py
+index 3b62654..5de822b 100644
+--- a/nova/compute/manager.py
++++ b/nova/compute/manager.py
+@@ -2002,13 +2002,19 @@ class ComputeManager(manager.Manager):
+                     block_device_info = resources['block_device_info']
+                     network_info = resources['network_info']
+                     allocs = resources['allocations']
++                    # Suppose that the accelerator_info has been obtained in
++                    # the previous step.
++                    accelerator_info = [{"instance_uuid": "", "type": "pci",
++                                         "name": "NVIDIA Corporation GP100GL",
++                                         "pcie_address": "0000:81:00.0"}]
+                     LOG.debug('Start spawning the instance on the hypervisor.',
+                               instance=instance)
+                     with timeutils.StopWatch() as timer:
+                         self.driver.spawn(context, instance, image_meta,
+                                           injected_files, admin_password,
+                                           allocs, network_info=network_info,
+-                                          block_device_info=block_device_info)
++                                          block_device_info=block_device_info,
++                                          accelerator_info=accelerator_info)
+                     LOG.info('Took %0.2f seconds to spawn the instance on '
+                              'the hypervisor.', timer.elapsed(),
+                              instance=instance)
